@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { Plus, Pencil, Trash2, Save, X, ExternalLink, RefreshCw } from "lucide-react"
+import { Plus, Pencil, Trash2, Save, X, ExternalLink, RefreshCw, Lock } from "lucide-react"
 
 type Category = {
     id: string
@@ -42,7 +42,14 @@ type FormData = {
     skills: string[]
 }
 
+// ⚠️ เปลี่ยน password นี้ก่อน deploy!
+const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "admin123"
+
 export default function AdminPage() {
+    const [isAuthenticated, setIsAuthenticated] = useState(false)
+    const [password, setPassword] = useState("")
+    const [passwordError, setPasswordError] = useState(false)
+
     const [certificates, setCertificates] = useState<Certificate[]>([])
     const [categories, setCategories] = useState<Category[]>([])
     const [loading, setLoading] = useState(true)
@@ -61,10 +68,36 @@ export default function AdminPage() {
         skills: [],
     })
 
+    // Check if already authenticated (stored in sessionStorage)
+    useEffect(() => {
+        const stored = sessionStorage.getItem("admin_auth")
+        if (stored === "true") {
+            setIsAuthenticated(true)
+        }
+    }, [])
+
+    const handleLogin = (e: React.FormEvent) => {
+        e.preventDefault()
+        if (password === ADMIN_PASSWORD) {
+            setIsAuthenticated(true)
+            sessionStorage.setItem("admin_auth", "true")
+            setPasswordError(false)
+        } else {
+            setPasswordError(true)
+        }
+    }
+
+    const handleLogout = () => {
+        setIsAuthenticated(false)
+        sessionStorage.removeItem("admin_auth")
+    }
+
     // Fetch data on mount
     useEffect(() => {
-        fetchData()
-    }, [])
+        if (isAuthenticated) {
+            fetchData()
+        }
+    }, [isAuthenticated])
 
     const fetchData = async () => {
         setLoading(true)
@@ -164,6 +197,57 @@ export default function AdminPage() {
         setEditingId(null)
     }
 
+    // Login Screen
+    if (!isAuthenticated) {
+        return (
+            <main className="min-h-screen bg-[#050505] text-white flex items-center justify-center">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="w-full max-w-md p-8 rounded-2xl bg-[#0a0a0a] border border-gray-800"
+                >
+                    <div className="text-center mb-8">
+                        <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Lock className="w-8 h-8 text-blue-400" />
+                        </div>
+                        <h1 className="text-2xl font-bold mb-2">Admin Access</h1>
+                        <p className="text-gray-500">Enter password to continue</p>
+                    </div>
+
+                    <form onSubmit={handleLogin} className="space-y-4">
+                        <div>
+                            <input
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="Password"
+                                className={`w-full px-4 py-3 bg-gray-900 border rounded-lg text-white focus:outline-none ${passwordError ? 'border-red-500' : 'border-gray-700 focus:border-blue-500'
+                                    }`}
+                                autoFocus
+                            />
+                            {passwordError && (
+                                <p className="text-red-400 text-sm mt-2">Incorrect password</p>
+                            )}
+                        </div>
+                        <button
+                            type="submit"
+                            className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                            Login
+                        </button>
+                    </form>
+
+                    <a
+                        href="/"
+                        className="block text-center text-gray-500 hover:text-white mt-6 text-sm"
+                    >
+                        ← Back to Portfolio
+                    </a>
+                </motion.div>
+            </main>
+        )
+    }
+
     if (loading) {
         return (
             <main className="min-h-screen bg-[#050505] text-white flex items-center justify-center">
@@ -193,8 +277,14 @@ export default function AdminPage() {
                             href="/"
                             className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
                         >
-                            ← Back to Portfolio
+                            ← Portfolio
                         </a>
+                        <button
+                            onClick={handleLogout}
+                            className="px-4 py-2 text-sm text-red-400 hover:text-red-300 transition-colors"
+                        >
+                            Logout
+                        </button>
                     </div>
                 </div>
             </header>
